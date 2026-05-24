@@ -1,0 +1,7 @@
+.env
+*.db
+tmp/
+__pycache__/
+*.pyc
+images/*.png
+!images/.gitkeep
