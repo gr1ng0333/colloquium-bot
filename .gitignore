@@ -6,3 +6,5 @@ __pycache__/
 *.pyc
 images/*.png
 !images/.gitkeep
+
+.venv/
