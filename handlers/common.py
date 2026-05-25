@@ -268,7 +268,7 @@ async def build_tickets_list_text(admin_status: bool = False) -> str:
         ticket = summaries.get(ticket_id)
         if ticket:
             image_mark = " 📊" if ticket["has_image"] else ""
-            lines.append(f"✅ {ticket_id}. {short_title(ticket['title'])}{image_mark}")
+            lines.append(f"✅ {ticket_id}. {ticket['title']}{image_mark}")
         else:
             lines.append(f"❌ {ticket_id}. Билет не загружен")
 
