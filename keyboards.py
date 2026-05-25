@@ -9,19 +9,23 @@ from aiogram.types import (
 ALL_TICKETS_BUTTON = "📋 Все билеты"
 HELP_BUTTON = "❓ Помощь"
 ADMIN_BUTTON = "⚙️ Админка"
+UPLOAD_BUTTON = "➕ Добавить билет"
 CANCEL_BUTTON = "❌ Отмена"
 
 
 def main_keyboard(is_admin: bool) -> ReplyKeyboardMarkup:
-    buttons = [
+    keyboard = [[
         KeyboardButton(text=ALL_TICKETS_BUTTON),
         KeyboardButton(text=HELP_BUTTON),
-    ]
+    ]]
     if is_admin:
-        buttons.append(KeyboardButton(text=ADMIN_BUTTON))
+        keyboard.append([
+            KeyboardButton(text=ADMIN_BUTTON),
+            KeyboardButton(text=UPLOAD_BUTTON),
+        ])
 
     return ReplyKeyboardMarkup(
-        keyboard=[buttons],
+        keyboard=keyboard,
         resize_keyboard=True,
         input_field_placeholder="Отправь номера билетов",
     )

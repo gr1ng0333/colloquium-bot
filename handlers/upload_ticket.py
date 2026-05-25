@@ -15,6 +15,7 @@ from handlers.common import (
     ticket_image_path,
 )
 from keyboards import (
+    UPLOAD_BUTTON,
     cancel_keyboard,
     confirm_overwrite_inline,
     image_choice_inline,
@@ -24,6 +25,15 @@ from states import UploadTicket
 
 
 router = Router()
+
+
+async def _start_upload_flow(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await state.set_state(UploadTicket.waiting_for_number)
+    await message.answer(
+        "Отправь номер билета (1–33):",
+        reply_markup=cancel_keyboard(),
+    )
 
 
 async def _ask_for_text(message: Message, state: FSMContext, ticket_number: int) -> None:
@@ -40,13 +50,16 @@ async def start_upload(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer("Нет доступа", show_alert=True)
         return
 
-    await state.clear()
-    await state.set_state(UploadTicket.waiting_for_number)
     await callback.answer()
-    await callback.message.answer(
-        "Отправь номер билета (1–33):",
-        reply_markup=cancel_keyboard(),
-    )
+    await _start_upload_flow(callback.message, state)
+
+
+@router.message(F.text == UPLOAD_BUTTON)
+async def start_upload_from_keyboard(message: Message, state: FSMContext) -> None:
+    if not is_admin_message(message):
+        return
+
+    await _start_upload_flow(message, state)
 
 
 @router.message(UploadTicket.waiting_for_number, F.text)
