@@ -6,12 +6,12 @@ from aiogram.types import CallbackQuery, Message
 
 from database import get_ticket, upsert_ticket
 from handlers.common import (
+    collect_text_or_document,
     extract_title,
     finish_fsm,
     is_admin_message,
     is_admin_user,
     parse_ticket_number,
-    read_text_from_message,
     ticket_image_path,
 )
 from keyboards import (
@@ -107,17 +107,33 @@ async def receive_ticket_text(message: Message, state: FSMContext) -> None:
     if not is_admin_message(message):
         return
 
-    raw_text = await read_text_from_message(message)
-    if not raw_text:
+    handled = await collect_text_or_document(
+        message=message,
+        state=state,
+        expected_state=UploadTicket.waiting_for_text.state,
+        finalize=_finalize_ticket_text,
+    )
+    if not handled:
         await message.answer("Нужен текст или .txt файл.")
+        return
+
+
+async def _finalize_ticket_text(
+    message: Message,
+    state: FSMContext,
+    raw_text: str,
+    part_count: int,
+) -> None:
+    if not is_admin_message(message):
         return
 
     title = extract_title(raw_text)
     await state.update_data(raw_text=raw_text, title=title)
     await state.set_state(UploadTicket.waiting_for_image_choice)
 
+    parts_text = f", склеено из {part_count} сообщений" if part_count > 1 else ""
     await message.answer(
-        f"✅ Текст принят ({len(raw_text)} символов). "
+        f"✅ Текст принят ({len(raw_text)} символов{parts_text}). "
         f"Первая строка: «{title}»\n\nЕсть график?",
         reply_markup=image_choice_inline(),
     )

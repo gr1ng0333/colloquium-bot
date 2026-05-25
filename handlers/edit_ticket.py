@@ -6,12 +6,12 @@ from aiogram.types import CallbackQuery, Message
 
 from database import get_ticket, update_ticket_text
 from handlers.common import (
+    collect_text_or_document,
     extract_title,
     finish_fsm,
     is_admin_message,
     is_admin_user,
     parse_ticket_number,
-    read_text_from_message,
 )
 from keyboards import cancel_keyboard, edit_actions_inline, main_keyboard
 from states import EditTicket
@@ -101,13 +101,29 @@ async def receive_new_text(message: Message, state: FSMContext) -> None:
     if not is_admin_message(message):
         return
 
-    raw_text = await read_text_from_message(message)
-    if not raw_text:
+    handled = await collect_text_or_document(
+        message=message,
+        state=state,
+        expected_state=EditTicket.waiting_for_new_text.state,
+        finalize=_finalize_new_text,
+    )
+    if not handled:
         await message.answer("Нужен текст или .txt файл.")
+        return
+
+
+async def _finalize_new_text(
+    message: Message,
+    state: FSMContext,
+    raw_text: str,
+    part_count: int,
+) -> None:
+    if not is_admin_message(message):
         return
 
     data = await state.get_data()
     ticket_number = data["ticket_number"]
     await update_ticket_text(ticket_number, extract_title(raw_text), raw_text)
     await state.clear()
-    await finish_fsm(message, f"✅ Текст билета {ticket_number} обновлён.")
+    parts_text = f" Склеено из {part_count} сообщений." if part_count > 1 else ""
+    await finish_fsm(message, f"✅ Текст билета {ticket_number} обновлён.{parts_text}")

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Awaitable, Callable
 from io import BytesIO
 from pathlib import Path
 import re
+import time
+from uuid import uuid4
 
 from aiogram import F, Router
 from aiogram.filters import Command
@@ -20,6 +24,11 @@ from keyboards import (
 
 
 router = Router()
+
+TEXT_COLLECTION_DELAY = 1.5
+TEXT_COLLECTION_IDLE_SECONDS = 1.4
+MAX_TEXT_PARTS = 3
+TextFinalizer = Callable[[Message, FSMContext, str, int], Awaitable[None]]
 
 START_TEXT = """📚 Билеты к коллоквиуму №2
 
@@ -125,6 +134,109 @@ async def read_text_from_message(message: Message) -> str | None:
         return data.decode("utf-8-sig")
     except UnicodeDecodeError:
         return data.decode("utf-8", errors="replace")
+
+
+async def _reset_text_collection(state: FSMContext) -> None:
+    await state.update_data(
+        text_collecting=False,
+        text_collection_id=None,
+        text_part_count=0,
+        last_message_time=0.0,
+    )
+
+
+async def _finalize_text_after_idle(
+    message: Message,
+    state: FSMContext,
+    expected_state: str,
+    collection_id: str,
+    finalize: TextFinalizer,
+) -> None:
+    await asyncio.sleep(TEXT_COLLECTION_DELAY)
+
+    while True:
+        if await state.get_state() != expected_state:
+            return
+
+        data = await state.get_data()
+        if (
+            not data.get("text_collecting")
+            or data.get("text_collection_id") != collection_id
+        ):
+            return
+
+        last_message_time = float(data.get("last_message_time") or 0)
+        idle_time = time.time() - last_message_time
+        if idle_time < TEXT_COLLECTION_IDLE_SECONDS:
+            await asyncio.sleep(TEXT_COLLECTION_IDLE_SECONDS - idle_time)
+            continue
+
+        raw_text = data.get("raw_text")
+        if not raw_text:
+            await _reset_text_collection(state)
+            return
+
+        part_count = int(data.get("text_part_count") or 1)
+        await _reset_text_collection(state)
+        await finalize(message, state, raw_text, part_count)
+        return
+
+
+async def collect_text_or_document(
+    message: Message,
+    state: FSMContext,
+    expected_state: str,
+    finalize: TextFinalizer,
+) -> bool:
+    if message.document:
+        raw_text = await read_text_from_message(message)
+        if raw_text is None:
+            return False
+
+        await _reset_text_collection(state)
+        await finalize(message, state, raw_text, 1)
+        return True
+
+    if not message.text:
+        return False
+
+    data = await state.get_data()
+    if data.get("text_collecting"):
+        part_count = int(data.get("text_part_count") or 1)
+        if part_count >= MAX_TEXT_PARTS:
+            await _reset_text_collection(state)
+            await state.update_data(raw_text=None)
+            await message.answer(
+                "Текст пришёл больше чем 3 сообщениями. Отправь билет .txt файлом, пожалуйста."
+            )
+            return True
+
+        raw_text = data.get("raw_text") or ""
+        await state.update_data(
+            raw_text=f"{raw_text}\n{message.text}",
+            text_part_count=part_count + 1,
+            last_message_time=time.time(),
+        )
+        return True
+
+    collection_id = uuid4().hex
+    await state.update_data(
+        raw_text=message.text,
+        text_collecting=True,
+        text_collection_id=collection_id,
+        text_part_count=1,
+        last_message_time=time.time(),
+    )
+    asyncio.create_task(
+        _finalize_text_after_idle(
+            message=message,
+            state=state,
+            expected_state=expected_state,
+            collection_id=collection_id,
+            finalize=finalize,
+        )
+    )
+    return True
 
 
 async def finish_fsm(message: Message, text: str) -> None:
