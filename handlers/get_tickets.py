@@ -36,6 +36,10 @@ def _document_filename(ticket_ids: list[int]) -> str:
     return "tickets.html"
 
 
+def _numbers_text(ticket_ids: list[int]) -> str:
+    return ", ".join(map(str, ticket_ids))
+
+
 @router.message(StateFilter(None), F.text)
 async def handle_get_tickets(message: Message) -> None:
     numbers = extract_ticket_numbers(message.text or "")
@@ -46,16 +50,14 @@ async def handle_get_tickets(message: Message) -> None:
     found_ids = [ticket["id"] for ticket in found_tickets]
     missing_ids = [ticket_id for ticket_id in numbers if ticket_id not in found_ids]
 
-    found_text = ", ".join(map(str, found_ids)) if found_ids else "нет"
-    status_lines = [f"Найдены билеты: {found_text}"]
-    if missing_ids:
-        status_lines.append(f"Не найдены: {', '.join(map(str, missing_ids))}")
-    await message.answer("\n".join(status_lines))
-
     if not found_tickets:
+        await message.answer(f"⚠️ Не загружены: {_numbers_text(missing_ids)}")
         return
 
+    await message.answer(f"⏳ Собираю билеты {_numbers_text(found_ids)}...")
+
     html_path = await render_tickets(found_tickets)
+    sent_image_ids: list[int] = []
     try:
         filename = _document_filename(found_ids)
         document_bytes = Path(html_path).read_bytes()
@@ -75,6 +77,18 @@ async def handle_get_tickets(message: Message) -> None:
                     document=FSInputFile(image_path),
                     caption=f"📊 К вопросу {ticket['id']}",
                 )
+                sent_image_ids.append(ticket["id"])
     finally:
         if os.path.exists(html_path):
             os.remove(html_path)
+
+    summary_lines = [f"✅ Готово: билеты {_numbers_text(found_ids)}"]
+    if missing_ids:
+        summary_lines.append(f"⚠️ Не загружены: {_numbers_text(missing_ids)}")
+
+    if sent_image_ids:
+        summary_lines.append(f"📊 Графики: к вопросам {_numbers_text(sent_image_ids)}")
+    else:
+        summary_lines.append("📊 Графики: нет")
+
+    await message.answer("\n".join(summary_lines))

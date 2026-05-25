@@ -109,3 +109,48 @@ async def get_ticket_count() -> int:
         await cursor.close()
 
     return int(row[0])
+
+
+async def get_all_tickets_summary() -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT id, title, has_image FROM tickets ORDER BY id"
+        )
+        rows = await cursor.fetchall()
+        await cursor.close()
+
+    return [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "has_image": bool(row["has_image"]),
+        }
+        for row in rows
+    ]
+
+
+async def update_ticket_text(ticket_id: int, title: str, raw_text: str) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """
+            UPDATE tickets
+            SET title = ?, raw_text = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (title, raw_text, ticket_id),
+        )
+        await db.commit()
+
+
+async def update_ticket_image(ticket_id: int, has_image: bool) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """
+            UPDATE tickets
+            SET has_image = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (int(has_image), ticket_id),
+        )
+        await db.commit()
