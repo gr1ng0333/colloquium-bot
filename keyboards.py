@@ -61,6 +61,17 @@ def image_choice_inline() -> InlineKeyboardMarkup:
     )
 
 
+def add_more_images_inline() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="➕ Добавить ещё график", callback_data="img_more"),
+                InlineKeyboardButton(text="✅ Готово", callback_data="img_done"),
+            ]
+        ]
+    )
+
+
 def confirm_overwrite_inline() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -83,16 +94,23 @@ def confirm_delete_inline(ticket_id: int) -> InlineKeyboardMarkup:
     )
 
 
-def image_actions_inline() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
+def image_actions_inline(can_add: bool = True) -> InlineKeyboardMarkup:
+    inline_keyboard = []
+    if can_add:
+        inline_keyboard.append(
+            [InlineKeyboardButton(text="➕ Добавить график", callback_data="imgact_add")]
+        )
+
+    inline_keyboard.extend(
+        [
             [
                 InlineKeyboardButton(text="🔄 Заменить", callback_data="imgact_replace"),
-                InlineKeyboardButton(text="🗑 Удалить график", callback_data="imgact_delete"),
+                InlineKeyboardButton(text="🗑 Удалить графики", callback_data="imgact_delete"),
             ],
             [InlineKeyboardButton(text="🔙 Назад", callback_data="imgact_back")],
         ]
     )
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
 def edit_actions_inline() -> InlineKeyboardMarkup:

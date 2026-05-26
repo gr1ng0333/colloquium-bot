@@ -8,8 +8,9 @@ from aiogram import F, Router
 from aiogram.filters import StateFilter
 from aiogram.types import BufferedInputFile, FSInputFile, Message
 
-from config import IMAGES_DIR, TOTAL_TICKETS
+from config import TOTAL_TICKETS
 from database import get_tickets
+from handlers.common import ticket_image_paths
 from renderer import render_tickets
 
 
@@ -57,7 +58,7 @@ async def handle_get_tickets(message: Message) -> None:
     await message.answer(f"⏳ Собираю билеты {_numbers_text(found_ids)}...")
 
     html_path = await render_tickets(found_tickets)
-    sent_image_ids: list[int] = []
+    sent_image_counts: dict[int, int] = {}
     try:
         filename = _document_filename(found_ids)
         document_bytes = Path(html_path).read_bytes()
@@ -70,14 +71,15 @@ async def handle_get_tickets(message: Message) -> None:
             if not ticket["has_image"]:
                 continue
 
-            image_path = Path(IMAGES_DIR) / f"ticket_{ticket['id']}.png"
-            if image_path.exists():
+            image_paths = ticket_image_paths(ticket["id"])
+            for image_index, image_path in enumerate(image_paths, start=1):
                 await message.bot.send_document(
                     chat_id=message.chat.id,
                     document=FSInputFile(image_path),
-                    caption=f"📊 К вопросу {ticket['id']}",
+                    caption=f"📊 К вопросу {ticket['id']} (график {image_index})",
                 )
-                sent_image_ids.append(ticket["id"])
+            if image_paths:
+                sent_image_counts[ticket["id"]] = len(image_paths)
     finally:
         if os.path.exists(html_path):
             os.remove(html_path)
@@ -86,8 +88,12 @@ async def handle_get_tickets(message: Message) -> None:
     if missing_ids:
         summary_lines.append(f"⚠️ Не загружены: {_numbers_text(missing_ids)}")
 
-    if sent_image_ids:
-        summary_lines.append(f"📊 Графики: к вопросам {_numbers_text(sent_image_ids)}")
+    if sent_image_counts:
+        image_summary = ", ".join(
+            f"{ticket_id} ({count})"
+            for ticket_id, count in sent_image_counts.items()
+        )
+        summary_lines.append(f"📊 Графики: к вопросам {image_summary}")
     else:
         summary_lines.append("📊 Графики: нет")
 

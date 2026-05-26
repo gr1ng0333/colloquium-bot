@@ -6,6 +6,7 @@ class UploadTicket(StatesGroup):
     waiting_for_text = State()
     waiting_for_image_choice = State()
     waiting_for_image = State()
+    waiting_for_more_images = State()
 
 
 class EditTicket(StatesGroup):

@@ -6,11 +6,11 @@ from aiogram.types import CallbackQuery, Message
 
 from database import delete_ticket, get_ticket
 from handlers.common import (
+    delete_ticket_images,
     finish_fsm,
     is_admin_message,
     is_admin_user,
     parse_ticket_number,
-    ticket_image_path,
 )
 from keyboards import cancel_keyboard, confirm_delete_inline, main_keyboard
 from states import DeleteTicket
@@ -73,10 +73,7 @@ async def confirm_delete(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     ticket_number = data["ticket_number"]
     await delete_ticket(ticket_number)
-
-    image_path = ticket_image_path(ticket_number)
-    if image_path.exists():
-        image_path.unlink()
+    delete_ticket_images(ticket_number)
 
     await state.clear()
     await callback.answer()

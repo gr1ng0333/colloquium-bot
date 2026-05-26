@@ -28,6 +28,7 @@ router = Router()
 TEXT_COLLECTION_DELAY = 1.5
 TEXT_COLLECTION_IDLE_SECONDS = 1.4
 MAX_TEXT_PARTS = 3
+MAX_TICKET_IMAGES = 3
 TextFinalizer = Callable[[Message, FSMContext, str, int], Awaitable[None]]
 
 START_TEXT = """📚 Билеты к коллоквиуму №2
@@ -38,6 +39,7 @@ START_TEXT = """📚 Билеты к коллоквиуму №2
 • 1, 22, 7
 • 5 12 28
 • 22"""
+
 
 def help_text(is_admin: bool) -> str:
     lines = [
@@ -109,8 +111,36 @@ def short_title(title: str, limit: int = 50) -> str:
     return f"{title[: limit - 1]}…"
 
 
-def ticket_image_path(ticket_id: int) -> Path:
-    return Path(IMAGES_DIR) / f"ticket_{ticket_id}.png"
+def ticket_image_path(ticket_id: int, image_index: int = 1) -> Path:
+    if image_index == 1:
+        return Path(IMAGES_DIR) / f"ticket_{ticket_id}.png"
+    return Path(IMAGES_DIR) / f"ticket_{ticket_id}_{image_index}.png"
+
+
+def ticket_image_paths(ticket_id: int) -> list[Path]:
+    return [
+        ticket_image_path(ticket_id, image_index)
+        for image_index in range(1, MAX_TICKET_IMAGES + 1)
+        if ticket_image_path(ticket_id, image_index).exists()
+    ]
+
+
+def ticket_image_count(ticket_id: int) -> int:
+    return len(ticket_image_paths(ticket_id))
+
+
+def next_ticket_image_index(ticket_id: int) -> int | None:
+    for image_index in range(1, MAX_TICKET_IMAGES + 1):
+        if not ticket_image_path(ticket_id, image_index).exists():
+            return image_index
+    return None
+
+
+def delete_ticket_images(ticket_id: int) -> None:
+    for image_index in range(1, MAX_TICKET_IMAGES + 1):
+        image_path = ticket_image_path(ticket_id, image_index)
+        if image_path.exists():
+            image_path.unlink()
 
 
 async def read_text_from_message(message: Message) -> str | None:
@@ -267,7 +297,8 @@ async def build_tickets_list_text(admin_status: bool = False) -> str:
     for ticket_id in range(1, TOTAL_TICKETS + 1):
         ticket = summaries.get(ticket_id)
         if ticket:
-            image_mark = " 📊" if ticket["has_image"] else ""
+            actual_image_count = ticket_image_count(ticket_id)
+            image_mark = f" 📊×{actual_image_count}" if actual_image_count > 1 else " 📊" if actual_image_count else ""
             lines.append(f"✅ {ticket_id}. {ticket['title']}{image_mark}")
         else:
             lines.append(f"❌ {ticket_id}. Билет не загружен")
