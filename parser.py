@@ -7,13 +7,18 @@ import re
 BLOCK_FORMULA_RE = re.compile(r"\$\$([\s\S]*?)\$\$")
 INLINE_FORMULA_RE = re.compile(r"\$([^\$]+?)\$")
 GRAPH_BLOCK_RE = re.compile(r"\[ГРАФИК\][\s\S]*?\[/ГРАФИК\]", re.IGNORECASE)
-GRAPH_MARKER_RE = re.compile(r"\[/?ГРАФИК\]", re.IGNORECASE)
+GRAPH_OPEN_MARKER_RE = re.compile(r"\[ГРАФИК\]", re.IGNORECASE)
+GRAPH_CLOSE_MARKER_RE = re.compile(r"\[/ГРАФИК\]", re.IGNORECASE)
 
-IMAGE_PLACEHOLDER = (
-    '<div class="image-placeholder">📊 К этому вопросу прилагается график '
-    "(см. ниже)</div>"
-)
-IMAGE_PLACEHOLDER_TOKEN = "%%IMAGE_PLACEHOLDER%%"
+IMAGE_PLACEHOLDER_TOKEN_RE = re.compile(r"%%IMAGE_PLACEHOLDER_(\d+)%%")
+
+
+def _image_placeholder(index: int) -> str:
+    return (
+        '<div class="image-placeholder">'
+        f"📊 К этому вопросу прилагается график {index} (см. ниже)"
+        "</div>"
+    )
 
 
 def _protect_formulas(text: str) -> tuple[str, list[str], list[str]]:
@@ -33,18 +38,24 @@ def _protect_formulas(text: str) -> tuple[str, list[str], list[str]]:
     return text, block_formulas, inline_formulas
 
 
-def _remove_graph_markup(text: str, has_image: bool) -> str:
-    placeholder_was_inserted = False
+def _graph_placeholder_replacer(image_count: int):
+    graph_index = 0
 
-    def graph_replacement(_: re.Match) -> str:
-        nonlocal placeholder_was_inserted
-        if has_image and not placeholder_was_inserted:
-            placeholder_was_inserted = True
-            return f"\n\n{IMAGE_PLACEHOLDER_TOKEN}\n\n"
-        return ""
+    def replace(_: re.Match) -> str:
+        nonlocal graph_index
+        graph_index += 1
+        if graph_index > image_count:
+            return ""
+        return f"\n\n%%IMAGE_PLACEHOLDER_{graph_index}%%\n\n"
 
-    text = GRAPH_BLOCK_RE.sub(graph_replacement, text)
-    text = GRAPH_MARKER_RE.sub(graph_replacement, text)
+    return replace
+
+
+def _remove_graph_markup(text: str, image_count: int) -> str:
+    replace_graph = _graph_placeholder_replacer(image_count)
+    text = GRAPH_BLOCK_RE.sub(replace_graph, text)
+    text = GRAPH_OPEN_MARKER_RE.sub(replace_graph, text)
+    text = GRAPH_CLOSE_MARKER_RE.sub("", text)
     return text
 
 
@@ -68,7 +79,7 @@ def _format_block(block: str) -> str:
     if not block:
         return ""
 
-    if block == IMAGE_PLACEHOLDER_TOKEN:
+    if IMAGE_PLACEHOLDER_TOKEN_RE.fullmatch(block):
         return block
 
     if re.fullmatch(r"%%BLOCK_FORMULA_\d+%%", block):
@@ -121,17 +132,35 @@ def _restore_formulas(
     return text
 
 
-def parse_raw_text(raw_text: str, has_image: bool = False) -> str:
+def _restore_image_placeholders(text: str) -> str:
+    def replace(match: re.Match) -> str:
+        return _image_placeholder(int(match.group(1)))
+
+    return IMAGE_PLACEHOLDER_TOKEN_RE.sub(replace, text)
+
+
+def parse_raw_text(
+    raw_text: str,
+    has_image: bool = False,
+    image_count: int | None = None,
+) -> str:
+    if image_count is None:
+        image_count = 1 if has_image else 0
+
     text, block_formulas, inline_formulas = _protect_formulas(raw_text)
-    text = _remove_graph_markup(text, has_image)
+    text = _remove_graph_markup(text, image_count)
     text = html.escape(text, quote=False)
     text = _apply_strong(text)
-    text = re.sub(r"(%%BLOCK_FORMULA_\d+%%|%%IMAGE_PLACEHOLDER%%)", r"\n\n\1\n\n", text)
+    text = re.sub(
+        r"(%%BLOCK_FORMULA_\d+%%|%%IMAGE_PLACEHOLDER_\d+%%)",
+        r"\n\n\1\n\n",
+        text,
+    )
 
     blocks = re.split(r"\n\s*\n+", text)
     fragment = "\n".join(
         formatted for block in blocks if (formatted := _format_block(block))
     )
-    fragment = fragment.replace(IMAGE_PLACEHOLDER_TOKEN, IMAGE_PLACEHOLDER)
+    fragment = _restore_image_placeholders(fragment)
 
     return _restore_formulas(fragment, block_formulas, inline_formulas)
