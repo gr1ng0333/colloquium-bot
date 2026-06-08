@@ -14,4 +14,4 @@ ADMIN_ID = int(os.getenv("ADMIN_ID", "0") or 0)
 DB_PATH = str(BASE_DIR / "colloquium.db")
 IMAGES_DIR = str(BASE_DIR / "images")
 TMP_DIR = str(BASE_DIR / "tmp")
-TOTAL_TICKETS = 33
+TOTAL_TICKETS = 43

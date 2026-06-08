@@ -36,7 +36,7 @@ async def _start_upload_flow(message: Message, state: FSMContext) -> None:
     await state.clear()
     await state.set_state(UploadTicket.waiting_for_number)
     await message.answer(
-        "Отправь номер билета (1–33):",
+        "Отправь номер билета (1–43):",
         reply_markup=cancel_keyboard(),
     )
 
@@ -91,7 +91,7 @@ async def receive_ticket_number(message: Message, state: FSMContext) -> None:
 
     ticket_number = parse_ticket_number(message.text)
     if ticket_number is None:
-        await message.answer("Нужно число от 1 до 33.")
+        await message.answer("Нужно число от 1 до 43.")
         return
 
     await state.update_data(ticket_number=ticket_number)
@@ -109,7 +109,7 @@ async def receive_ticket_number(message: Message, state: FSMContext) -> None:
 @router.message(UploadTicket.waiting_for_number)
 async def invalid_ticket_number(message: Message) -> None:
     if is_admin_message(message):
-        await message.answer("Нужно число от 1 до 33.")
+        await message.answer("Нужно число от 1 до 43.")
 
 
 @router.callback_query(UploadTicket.waiting_for_number, F.data == "overwrite_yes")
@@ -221,9 +221,9 @@ async def add_more_image(callback: CallbackQuery, state: FSMContext) -> None:
     next_index = next_ticket_image_index(ticket_number)
     if next_index is None:
         await state.clear()
-        await callback.answer("Уже загружено 3 графика", show_alert=True)
+        await callback.answer(f"Уже загружено {MAX_TICKET_IMAGES} графиков", show_alert=True)
         await callback.message.answer(
-            f"✅ Билет {ticket_number} сохранён с 3 графиками.",
+            f"✅ Билет {ticket_number} сохранён с {MAX_TICKET_IMAGES} графиками.",
             reply_markup=main_keyboard(is_admin=True),
         )
         return

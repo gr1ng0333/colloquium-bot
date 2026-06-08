@@ -43,7 +43,7 @@ async def start_image_manage(callback: CallbackQuery, state: FSMContext) -> None
     await state.set_state(ManageImage.waiting_for_number)
     await callback.answer()
     await callback.message.answer(
-        "К какому билету добавить/заменить график? (1–33):",
+        "К какому билету добавить/заменить график? (1–43):",
         reply_markup=cancel_keyboard(),
     )
 
@@ -55,7 +55,7 @@ async def receive_image_number(message: Message, state: FSMContext) -> None:
 
     ticket_number = parse_ticket_number(message.text)
     if ticket_number is None:
-        await message.answer("Нужно число от 1 до 33.")
+        await message.answer("Нужно число от 1 до 43.")
         return
 
     ticket = await get_ticket(ticket_number)
@@ -89,7 +89,7 @@ async def receive_image_number(message: Message, state: FSMContext) -> None:
 @router.message(ManageImage.waiting_for_number)
 async def invalid_image_number(message: Message) -> None:
     if is_admin_message(message):
-        await message.answer("Нужно число от 1 до 33.")
+        await message.answer("Нужно число от 1 до 43.")
 
 
 @router.callback_query(ManageImage.waiting_for_action, F.data == "imgact_add")
@@ -102,7 +102,7 @@ async def add_image(callback: CallbackQuery, state: FSMContext) -> None:
     ticket_number = data["ticket_number"]
     next_index = next_ticket_image_index(ticket_number)
     if next_index is None:
-        await callback.answer("Уже загружено 3 графика", show_alert=True)
+        await callback.answer(f"Уже загружено {MAX_TICKET_IMAGES} графиков", show_alert=True)
         return
 
     await callback.answer()

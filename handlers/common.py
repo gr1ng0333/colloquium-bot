@@ -28,7 +28,7 @@ router = Router()
 TEXT_COLLECTION_DELAY = 1.5
 TEXT_COLLECTION_IDLE_SECONDS = 1.4
 MAX_TEXT_PARTS = 3
-MAX_TICKET_IMAGES = 3
+MAX_TICKET_IMAGES = 5
 TextFinalizer = Callable[[Message, FSMContext, str, int], Awaitable[None]]
 
 START_TEXT = """📚 Билеты к коллоквиуму №2
@@ -141,6 +141,14 @@ def delete_ticket_images(ticket_id: int) -> None:
         image_path = ticket_image_path(ticket_id, image_index)
         if image_path.exists():
             image_path.unlink()
+
+
+def delete_all_ticket_images() -> None:
+    images_dir = Path(IMAGES_DIR)
+    if not images_dir.exists():
+        return
+    for image_file in images_dir.glob("ticket_*.png"):
+        image_file.unlink()
 
 
 async def read_text_from_message(message: Message) -> str | None:

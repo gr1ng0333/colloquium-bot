@@ -154,3 +154,15 @@ async def update_ticket_image(ticket_id: int, has_image: bool) -> None:
             (int(has_image), ticket_id),
         )
         await db.commit()
+
+
+async def delete_all_tickets() -> int:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM tickets")
+        row = await cursor.fetchone()
+        count = int(row[0])
+        await cursor.close()
+        await db.execute("DELETE FROM tickets")
+        await db.commit()
+
+    return count

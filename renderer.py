@@ -9,7 +9,7 @@ from config import BASE_DIR, IMAGES_DIR, TMP_DIR
 from parser import parse_raw_text
 
 
-MAX_TICKET_IMAGES = 3
+MAX_TICKET_IMAGES = 5
 
 
 def _ticket_image_path(ticket_id: int, image_index: int = 1) -> Path:

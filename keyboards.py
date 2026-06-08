@@ -45,6 +45,7 @@ def admin_menu_inline() -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text="✏️ Редактировать билет", callback_data="admin_edit")],
             [InlineKeyboardButton(text="📊 Добавить/заменить график", callback_data="admin_image")],
             [InlineKeyboardButton(text="🗑 Удалить билет", callback_data="admin_delete")],
+            [InlineKeyboardButton(text="🧹 Удалить ВСЕ билеты", callback_data="admin_delete_all")],
             [InlineKeyboardButton(text="📋 Статус загрузки", callback_data="admin_status")],
         ]
     )
@@ -89,6 +90,17 @@ def confirm_delete_inline(ticket_id: int) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="🗑 Да, удалить", callback_data=f"del_confirm_{ticket_id}"),
                 InlineKeyboardButton(text="🔙 Отмена", callback_data="del_cancel"),
+            ]
+        ]
+    )
+
+
+def confirm_delete_all_inline() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🧹 Да, удалить ВСЕ", callback_data="del_all_confirm"),
+                InlineKeyboardButton(text="🔙 Отмена", callback_data="del_all_cancel"),
             ]
         ]
     )
