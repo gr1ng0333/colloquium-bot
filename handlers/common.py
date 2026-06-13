@@ -393,3 +393,17 @@ async def cancel(message: Message, state: FSMContext) -> None:
         "Действие отменено.",
         reply_markup=main_keyboard(is_admin_message(message)),
     )
+
+
+@router.message(Command("myid"))
+async def my_id(message: Message) -> None:
+    user = message.from_user
+    user_id = user.id if user else "unknown"
+    is_admin = is_admin_message(message)
+    admin_status = "✅ Ты админ" if is_admin else f"❌ Ты НЕ админ (ADMIN_ID в .env = {ADMIN_ID})"
+    await message.answer(
+        f"🆔 Твой Telegram ID: <code>{user_id}</code>\n{admin_status}\n\n"
+        "Скопируй ID и пропиши в .env:\n"
+        f"<code>ADMIN_ID={user_id}</code>",
+        parse_mode="HTML",
+    )

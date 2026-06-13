@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from aiogram import Bot, Dispatcher
 
@@ -18,6 +19,12 @@ from handlers import (
 async def main() -> None:
     if not BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN is not set. Add it to .env before starting the bot.")
+
+    from config import ADMIN_ID
+    if ADMIN_ID == 0:
+        logging.warning("ADMIN_ID is not set! Admin functions will be disabled for everyone.")
+    else:
+        logging.info(f"Bot starting with ADMIN_ID={ADMIN_ID}")
 
     await init_db()
     bot = Bot(token=BOT_TOKEN)
