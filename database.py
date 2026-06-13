@@ -92,25 +92,6 @@ async def delete_ticket(ticket_id: int) -> bool:
 
     return deleted
 
-
-async def get_all_ticket_ids() -> list[int]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute("SELECT id FROM tickets ORDER BY id")
-        rows = await cursor.fetchall()
-        await cursor.close()
-
-    return [row[0] for row in rows]
-
-
-async def get_ticket_count() -> int:
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute("SELECT COUNT(*) FROM tickets")
-        row = await cursor.fetchone()
-        await cursor.close()
-
-    return int(row[0])
-
-
 async def get_all_tickets_summary() -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row

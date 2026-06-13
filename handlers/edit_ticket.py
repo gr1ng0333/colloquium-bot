@@ -179,7 +179,9 @@ async def _finalize_new_text(
         return
 
     data = await state.get_data()
-    ticket_number = data["ticket_number"]
+    ticket_number = data.get("ticket_number")
+    if ticket_number is None:
+        return
     await update_ticket_text(ticket_number, extract_title(raw_text), raw_text)
 
     parts_text = f" Склеено из {part_count} сообщений." if part_count > 1 else ""

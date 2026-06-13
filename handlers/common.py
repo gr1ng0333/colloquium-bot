@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
+import html as html_lib
 from io import BytesIO
 from pathlib import Path
 import re
@@ -104,11 +105,6 @@ def extract_title(raw_text: str) -> str:
     return "Без названия"
 
 
-def short_title(title: str, limit: int = 50) -> str:
-    title = title.strip().replace("\n", " ")
-    if len(title) <= limit:
-        return title
-    return f"{title[: limit - 1]}…"
 
 
 def ticket_image_path(ticket_id: int, image_index: int = 1) -> Path:
@@ -152,26 +148,23 @@ def delete_all_ticket_images() -> None:
 
 
 async def read_text_from_message(message: Message) -> str | None:
+    document = message.document
+    if document:
+        is_plain_text = document.mime_type == "text/plain"
+        is_txt_file = bool(document.file_name and document.file_name.lower().endswith(".txt"))
+        if is_plain_text or is_txt_file:
+            buffer = BytesIO()
+            await message.bot.download(document.file_id, destination=buffer)
+            data = buffer.getvalue()
+            try:
+                return data.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                return data.decode("utf-8", errors="replace")
+
     if message.text:
         return message.text
 
-    document = message.document
-    if not document:
-        return None
-
-    is_plain_text = document.mime_type == "text/plain"
-    is_txt_file = bool(document.file_name and document.file_name.lower().endswith(".txt"))
-    if not (is_plain_text or is_txt_file):
-        return None
-
-    buffer = BytesIO()
-    await message.bot.download(document.file_id, destination=buffer)
-    data = buffer.getvalue()
-
-    try:
-        return data.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        return data.decode("utf-8", errors="replace")
+    return None
 
 
 async def _reset_text_collection(state: FSMContext) -> None:
@@ -285,6 +278,14 @@ async def send_long_message(message: Message, text: str) -> None:
     lines = text.splitlines()
     chunk = ""
     for line in lines:
+        if len(line) > 3900:
+            if chunk:
+                await message.answer(chunk)
+                chunk = ""
+            for start in range(0, len(line), 3900):
+                await message.answer(line[start : start + 3900])
+            continue
+
         next_chunk = f"{chunk}\n{line}" if chunk else line
         if len(next_chunk) > 3900:
             await message.answer(chunk)
@@ -297,23 +298,24 @@ async def send_long_message(message: Message, text: str) -> None:
 
 
 async def send_raw_text_mono(message: Message, raw_text: str) -> None:
-    """Send raw ticket text wrapped in ``` mono blocks.
+    """Send raw ticket text wrapped in <pre> HTML blocks.
 
     Splits into multiple messages when text exceeds Telegram limits.
-    Each message is a valid mono block so the admin can copy any part.
+    Uses HTML parse_mode to avoid Markdown escaping issues.
     """
-    max_content_len = 4096 - len("```\n\n```") - 20  # safety margin
+    max_content_len = 4096 - len("<pre></pre>") - 50  # safety margin
     lines = raw_text.splitlines(keepends=True)
     chunks: list[str] = []
     current = ""
 
     for line in lines:
-        if len(current) + len(line) > max_content_len:
+        escaped_line = html_lib.escape(line)
+        if len(current) + len(escaped_line) > max_content_len:
             if current:
                 chunks.append(current)
-            current = line
+            current = escaped_line
         else:
-            current += line
+            current += escaped_line
 
     if current:
         chunks.append(current)
@@ -321,7 +323,7 @@ async def send_raw_text_mono(message: Message, raw_text: str) -> None:
     total = len(chunks)
     for i, chunk in enumerate(chunks, start=1):
         header = f"📄 Часть {i}/{total}\n" if total > 1 else ""
-        await message.answer(f"{header}```\n{chunk}```", parse_mode="Markdown")
+        await message.answer(f"{header}<pre>{chunk}</pre>", parse_mode="HTML")
 
 
 async def build_tickets_list_text(admin_status: bool = False) -> str:
