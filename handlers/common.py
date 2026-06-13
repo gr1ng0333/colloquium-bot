@@ -296,6 +296,34 @@ async def send_long_message(message: Message, text: str) -> None:
         await message.answer(chunk)
 
 
+async def send_raw_text_mono(message: Message, raw_text: str) -> None:
+    """Send raw ticket text wrapped in ``` mono blocks.
+
+    Splits into multiple messages when text exceeds Telegram limits.
+    Each message is a valid mono block so the admin can copy any part.
+    """
+    max_content_len = 4096 - len("```\n\n```") - 20  # safety margin
+    lines = raw_text.splitlines(keepends=True)
+    chunks: list[str] = []
+    current = ""
+
+    for line in lines:
+        if len(current) + len(line) > max_content_len:
+            if current:
+                chunks.append(current)
+            current = line
+        else:
+            current += line
+
+    if current:
+        chunks.append(current)
+
+    total = len(chunks)
+    for i, chunk in enumerate(chunks, start=1):
+        header = f"📄 Часть {i}/{total}\n" if total > 1 else ""
+        await message.answer(f"{header}```\n{chunk}```", parse_mode="Markdown")
+
+
 async def build_tickets_list_text(admin_status: bool = False) -> str:
     summaries = {ticket["id"]: ticket for ticket in await get_all_tickets_summary()}
     loaded_count = len(summaries)

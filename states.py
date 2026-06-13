@@ -13,6 +13,8 @@ class EditTicket(StatesGroup):
     waiting_for_number = State()
     waiting_for_action = State()
     waiting_for_new_text = State()
+    waiting_for_image = State()
+    waiting_for_more_images = State()
 
 
 class ManageImage(StatesGroup):

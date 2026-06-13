@@ -125,10 +125,34 @@ def image_actions_inline(can_add: bool = True) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
-def edit_actions_inline() -> InlineKeyboardMarkup:
+def edit_actions_inline(has_images: bool = False, can_add_image: bool = True) -> InlineKeyboardMarkup:
+    inline_keyboard = [
+        [InlineKeyboardButton(text="📄 Выгрузить исходный текст", callback_data="edit_export_raw")],
+        [InlineKeyboardButton(text="✏️ Заменить текст", callback_data="edit_replace_text")],
+    ]
+    if can_add_image:
+        inline_keyboard.append(
+            [InlineKeyboardButton(text="📊 Добавить график", callback_data="edit_add_image")]
+        )
+    if has_images:
+        inline_keyboard.append(
+            [
+                InlineKeyboardButton(text="🔄 Заменить графики", callback_data="edit_replace_images"),
+                InlineKeyboardButton(text="🗑 Удалить графики", callback_data="edit_delete_images"),
+            ]
+        )
+    inline_keyboard.append(
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="edit_back")]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+def edit_add_more_images_inline() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="✏️ Заменить текст", callback_data="edit_replace_text")],
-            [InlineKeyboardButton(text="🔙 Назад", callback_data="edit_back")],
+            [
+                InlineKeyboardButton(text="➕ Добавить ещё график", callback_data="edit_img_more"),
+                InlineKeyboardButton(text="✅ Готово", callback_data="edit_img_done"),
+            ]
         ]
     )
