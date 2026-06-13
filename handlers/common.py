@@ -14,8 +14,8 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, User
 
-from config import ADMIN_ID, IMAGES_DIR, TOTAL_TICKETS
-from database import get_all_tickets_summary
+from config import OWNER_ID, IMAGES_DIR, TOTAL_TICKETS
+from database import add_admin, get_all_admin_ids, get_all_tickets_summary, remove_admin
 from keyboards import (
     ALL_TICKETS_BUTTON,
     CANCEL_BUTTON,
@@ -73,8 +73,21 @@ def help_text(is_admin: bool) -> str:
     return "\n".join(lines)
 
 
+_admin_ids: set[int] = set()
+
+
+async def load_admins() -> None:
+    """Load admin IDs from the database into memory. Call at startup."""
+    global _admin_ids
+    _admin_ids = set(await get_all_admin_ids())
+
+
+def is_owner_user(user: User | None) -> bool:
+    return bool(user and user.id == OWNER_ID)
+
+
 def is_admin_user(user: User | None) -> bool:
-    return bool(user and user.id == ADMIN_ID)
+    return bool(user and (user.id == OWNER_ID or user.id in _admin_ids))
 
 
 def is_admin_message(message: Message) -> bool:
@@ -400,10 +413,73 @@ async def my_id(message: Message) -> None:
     user = message.from_user
     user_id = user.id if user else "unknown"
     is_admin = is_admin_message(message)
-    admin_status = "✅ Ты админ" if is_admin else f"❌ Ты НЕ админ (ADMIN_ID в .env = {ADMIN_ID})"
+    is_owner = is_owner_user(message.from_user)
+    if is_owner:
+        status = "👑 Ты владелец бота"
+    elif is_admin:
+        status = "✅ Ты админ"
+    else:
+        status = "❌ Ты не админ"
     await message.answer(
-        f"🆔 Твой Telegram ID: <code>{user_id}</code>\n{admin_status}\n\n"
-        "Скопируй ID и пропиши в .env:\n"
-        f"<code>ADMIN_ID={user_id}</code>",
+        f"🆔 Твой Telegram ID: <code>{user_id}</code>\n{status}",
         parse_mode="HTML",
     )
+
+
+@router.message(Command("addadmin"))
+async def cmd_add_admin(message: Message) -> None:
+    if not is_owner_user(message.from_user):
+        await message.answer("⛔ Только владелец может назначать админов.")
+        return
+
+    args = (message.text or "").split()
+    if len(args) < 2 or not args[1].isdigit():
+        await message.answer("❓ Использование: /addadmin <user_id>")
+        return
+
+    new_id = int(args[1])
+    if new_id == OWNER_ID:
+        await message.answer("Ты уже владелец, не нужно добавлять себя.")
+        return
+
+    added = await add_admin(new_id)
+    if added:
+        _admin_ids.add(new_id)
+        await message.answer(f"✅ Пользователь <code>{new_id}</code> назначен админом.", parse_mode="HTML")
+    else:
+        await message.answer(f"⚠️ Пользователь <code>{new_id}</code> уже админ.", parse_mode="HTML")
+
+
+@router.message(Command("removeadmin"))
+async def cmd_remove_admin(message: Message) -> None:
+    if not is_owner_user(message.from_user):
+        await message.answer("⛔ Только владелец может удалять админов.")
+        return
+
+    args = (message.text or "").split()
+    if len(args) < 2 or not args[1].isdigit():
+        await message.answer("❓ Использование: /removeadmin <user_id>")
+        return
+
+    target_id = int(args[1])
+    removed = await remove_admin(target_id)
+    if removed:
+        _admin_ids.discard(target_id)
+        await message.answer(f"✅ Пользователь <code>{target_id}</code> больше не админ.", parse_mode="HTML")
+    else:
+        await message.answer(f"⚠️ Пользователь <code>{target_id}</code> не найден среди админов.", parse_mode="HTML")
+
+
+@router.message(Command("admins"))
+async def cmd_list_admins(message: Message) -> None:
+    if not is_admin_message(message):
+        return
+
+    lines = [f"👑 Владелец: <code>{OWNER_ID}</code>"]
+    if _admin_ids:
+        for aid in sorted(_admin_ids):
+            lines.append(f"✅ Админ: <code>{aid}</code>")
+    else:
+        lines.append("Нет дополнительных админов.")
+
+    await message.answer("\n".join(lines), parse_mode="HTML")

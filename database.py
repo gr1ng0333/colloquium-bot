@@ -16,6 +16,13 @@ CREATE TABLE IF NOT EXISTS tickets (
 );
 """
 
+CREATE_ADMINS_TABLE = """
+CREATE TABLE IF NOT EXISTS admins (
+    user_id INTEGER PRIMARY KEY,
+    added_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
 
 def _row_to_dict(row: aiosqlite.Row) -> dict:
     return {
@@ -31,6 +38,7 @@ def _row_to_dict(row: aiosqlite.Row) -> dict:
 async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(CREATE_TICKETS_TABLE)
+        await db.execute(CREATE_ADMINS_TABLE)
         await db.commit()
 
 
@@ -147,3 +155,33 @@ async def delete_all_tickets() -> int:
         await db.commit()
 
     return count
+
+
+# ── Admin management ─────────────────────────────────────────────────
+
+
+async def get_all_admin_ids() -> list[int]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("SELECT user_id FROM admins ORDER BY added_at")
+        rows = await cursor.fetchall()
+        await cursor.close()
+    return [row[0] for row in rows]
+
+
+async def add_admin(user_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            await db.execute("INSERT INTO admins (user_id) VALUES (?)", (user_id,))
+            await db.commit()
+            return True
+        except aiosqlite.IntegrityError:
+            return False
+
+
+async def remove_admin(user_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("DELETE FROM admins WHERE user_id = ?", (user_id,))
+        deleted = cursor.rowcount > 0
+        await cursor.close()
+        await db.commit()
+    return deleted
