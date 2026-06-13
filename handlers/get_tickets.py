@@ -10,7 +10,7 @@ from aiogram.types import BufferedInputFile, FSInputFile, Message
 
 from config import TOTAL_TICKETS
 from database import get_tickets
-from handlers.common import ticket_image_paths
+from handlers.common import is_admin_message, ticket_image_paths
 from renderer import render_tickets
 
 
@@ -43,6 +43,9 @@ def _numbers_text(ticket_ids: list[int]) -> str:
 
 @router.message(StateFilter(None), F.text)
 async def handle_get_tickets(message: Message) -> None:
+    if not is_admin_message(message):
+        return
+
     numbers = extract_ticket_numbers(message.text or "")
     if not numbers:
         return

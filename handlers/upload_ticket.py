@@ -11,8 +11,8 @@ from handlers.common import (
     delete_ticket_images,
     extract_title,
     finish_fsm,
-    is_admin_message,
-    is_admin_user,
+    is_owner_message,
+    is_owner_user,
     next_ticket_image_index,
     parse_ticket_number,
     ticket_image_count,
@@ -68,7 +68,7 @@ async def _finish_with_images_prompt(message: Message, state: FSMContext, ticket
 
 @router.callback_query(F.data == "admin_upload")
 async def start_upload(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -78,7 +78,7 @@ async def start_upload(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(F.text == UPLOAD_BUTTON)
 async def start_upload_from_keyboard(message: Message, state: FSMContext) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     await _start_upload_flow(message, state)
@@ -86,7 +86,7 @@ async def start_upload_from_keyboard(message: Message, state: FSMContext) -> Non
 
 @router.message(UploadTicket.waiting_for_number, F.text)
 async def receive_ticket_number(message: Message, state: FSMContext) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     ticket_number = parse_ticket_number(message.text)
@@ -114,7 +114,7 @@ async def invalid_ticket_number(message: Message) -> None:
 
 @router.callback_query(UploadTicket.waiting_for_number, F.data == "overwrite_yes")
 async def confirm_overwrite(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -125,7 +125,7 @@ async def confirm_overwrite(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(UploadTicket.waiting_for_number, F.data == "overwrite_cancel")
 async def cancel_overwrite(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -133,13 +133,13 @@ async def cancel_overwrite(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     await callback.message.answer(
         "Действие отменено.",
-        reply_markup=main_keyboard(is_admin=True),
+        reply_markup=main_keyboard(is_admin=True, is_owner=True),
     )
 
 
 @router.message(UploadTicket.waiting_for_text)
 async def receive_ticket_text(message: Message, state: FSMContext) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     handled = await collect_text_or_document(
@@ -159,7 +159,7 @@ async def _finalize_ticket_text(
     raw_text: str,
     part_count: int,
 ) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     title = extract_title(raw_text)
@@ -176,7 +176,7 @@ async def _finalize_ticket_text(
 
 @router.callback_query(UploadTicket.waiting_for_image_choice, F.data == "img_no")
 async def choose_no_image(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -189,13 +189,13 @@ async def choose_no_image(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     await callback.message.answer(
         f"✅ Билет {ticket_number} сохранён.",
-        reply_markup=main_keyboard(is_admin=True),
+        reply_markup=main_keyboard(is_admin=True, is_owner=True),
     )
 
 
 @router.callback_query(UploadTicket.waiting_for_image_choice, F.data == "img_yes")
 async def choose_yes_image(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -212,7 +212,7 @@ async def choose_yes_image(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(UploadTicket.waiting_for_more_images, F.data == "img_more")
 async def add_more_image(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -224,7 +224,7 @@ async def add_more_image(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer(f"Уже загружено {MAX_TICKET_IMAGES} графиков", show_alert=True)
         await callback.message.answer(
             f"✅ Билет {ticket_number} сохранён с {MAX_TICKET_IMAGES} графиками.",
-            reply_markup=main_keyboard(is_admin=True),
+            reply_markup=main_keyboard(is_admin=True, is_owner=True),
         )
         return
 
@@ -239,7 +239,7 @@ async def add_more_image(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(UploadTicket.waiting_for_more_images, F.data == "img_done")
 async def finish_more_images(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -250,13 +250,13 @@ async def finish_more_images(callback: CallbackQuery, state: FSMContext) -> None
     await callback.answer()
     await callback.message.answer(
         f"✅ Билет {ticket_number} сохранён с {image_count} графиками.",
-        reply_markup=main_keyboard(is_admin=True),
+        reply_markup=main_keyboard(is_admin=True, is_owner=True),
     )
 
 
 @router.message(UploadTicket.waiting_for_image)
 async def receive_ticket_image(message: Message, state: FSMContext) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     file_id = None

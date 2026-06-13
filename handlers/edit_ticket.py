@@ -11,8 +11,8 @@ from handlers.common import (
     delete_ticket_images,
     extract_title,
     finish_fsm,
-    is_admin_message,
-    is_admin_user,
+    is_owner_message,
+    is_owner_user,
     next_ticket_image_index,
     parse_ticket_number,
     send_raw_text_mono,
@@ -70,7 +70,7 @@ async def _show_edit_menu(target, state: FSMContext, ticket_number: int) -> None
 
 @router.callback_query(F.data == "admin_edit")
 async def start_edit(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -85,7 +85,7 @@ async def start_edit(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(EditTicket.waiting_for_number, F.text)
 async def receive_edit_number(message: Message, state: FSMContext) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     ticket_number = parse_ticket_number(message.text)
@@ -107,7 +107,7 @@ async def invalid_edit_number(message: Message) -> None:
 
 @router.callback_query(EditTicket.waiting_for_action, F.data == "edit_export_raw")
 async def export_raw_text(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -119,7 +119,7 @@ async def export_raw_text(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer()
         await callback.message.answer(
             f"Билет {ticket_number} не найден.",
-            reply_markup=main_keyboard(is_admin=True),
+            reply_markup=main_keyboard(is_admin=True, is_owner=True),
         )
         return
 
@@ -139,7 +139,7 @@ async def export_raw_text(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(EditTicket.waiting_for_action, F.data == "edit_replace_text")
 async def choose_replace_text(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -155,7 +155,7 @@ async def choose_replace_text(callback: CallbackQuery, state: FSMContext) -> Non
 
 @router.message(EditTicket.waiting_for_new_text)
 async def receive_new_text(message: Message, state: FSMContext) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     handled = await collect_text_or_document(
@@ -175,7 +175,7 @@ async def _finalize_new_text(
     raw_text: str,
     part_count: int,
 ) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     data = await state.get_data()
@@ -198,7 +198,7 @@ async def _finalize_new_text(
 
 @router.callback_query(EditTicket.waiting_for_action, F.data == "edit_add_image")
 async def edit_add_image(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -222,7 +222,7 @@ async def edit_add_image(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(EditTicket.waiting_for_image)
 async def edit_receive_image(message: Message, state: FSMContext) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     file_id = None
@@ -270,7 +270,7 @@ async def edit_receive_image(message: Message, state: FSMContext) -> None:
 
 @router.callback_query(EditTicket.waiting_for_more_images, F.data == "edit_img_more")
 async def edit_add_more_image(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -295,7 +295,7 @@ async def edit_add_more_image(callback: CallbackQuery, state: FSMContext) -> Non
 
 @router.callback_query(EditTicket.waiting_for_more_images, F.data == "edit_img_done")
 async def edit_finish_images(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -314,7 +314,7 @@ async def edit_finish_images(callback: CallbackQuery, state: FSMContext) -> None
 
 @router.callback_query(EditTicket.waiting_for_action, F.data == "edit_replace_images")
 async def edit_replace_images(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -335,7 +335,7 @@ async def edit_replace_images(callback: CallbackQuery, state: FSMContext) -> Non
 
 @router.callback_query(EditTicket.waiting_for_action, F.data == "edit_delete_images")
 async def edit_delete_images(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -354,12 +354,12 @@ async def edit_delete_images(callback: CallbackQuery, state: FSMContext) -> None
 
 @router.callback_query(EditTicket.waiting_for_action, F.data == "edit_back")
 async def back_from_edit(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
     await state.clear()
     await callback.answer()
     await callback.message.answer(
-        "Редактирование отменено.", reply_markup=main_keyboard(is_admin=True)
+        "Редактирование отменено.", reply_markup=main_keyboard(is_admin=True, is_owner=True)
     )

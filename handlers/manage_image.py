@@ -9,8 +9,8 @@ from handlers.common import (
     MAX_TICKET_IMAGES,
     delete_ticket_images,
     finish_fsm,
-    is_admin_message,
-    is_admin_user,
+    is_owner_message,
+    is_owner_user,
     next_ticket_image_index,
     parse_ticket_number,
     ticket_image_count,
@@ -35,7 +35,7 @@ async def _ask_for_image(message: Message, state: FSMContext, ticket_number: int
 
 @router.callback_query(F.data == "admin_image")
 async def start_image_manage(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -50,7 +50,7 @@ async def start_image_manage(callback: CallbackQuery, state: FSMContext) -> None
 
 @router.message(ManageImage.waiting_for_number, F.text)
 async def receive_image_number(message: Message, state: FSMContext) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     ticket_number = parse_ticket_number(message.text)
@@ -94,7 +94,7 @@ async def invalid_image_number(message: Message) -> None:
 
 @router.callback_query(ManageImage.waiting_for_action, F.data == "imgact_add")
 async def add_image(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -111,7 +111,7 @@ async def add_image(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(ManageImage.waiting_for_action, F.data == "imgact_replace")
 async def replace_image(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -124,7 +124,7 @@ async def replace_image(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(ManageImage.waiting_for_action, F.data == "imgact_delete")
 async def delete_image(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -136,24 +136,24 @@ async def delete_image(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     await callback.message.answer(
         f"📊 Графики билета {ticket_number} удалены.",
-        reply_markup=main_keyboard(is_admin=True),
+        reply_markup=main_keyboard(is_admin=True, is_owner=True),
     )
 
 
 @router.callback_query(ManageImage.waiting_for_action, F.data == "imgact_back")
 async def back_from_image(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
     await state.clear()
     await callback.answer()
-    await callback.message.answer("Действие отменено.", reply_markup=main_keyboard(is_admin=True))
+    await callback.message.answer("Действие отменено.", reply_markup=main_keyboard(is_admin=True, is_owner=True))
 
 
 @router.message(ManageImage.waiting_for_image)
 async def receive_image(message: Message, state: FSMContext) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     file_id = None

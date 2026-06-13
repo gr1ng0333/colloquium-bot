@@ -9,8 +9,8 @@ from handlers.common import (
     delete_all_ticket_images,
     delete_ticket_images,
     finish_fsm,
-    is_admin_message,
-    is_admin_user,
+    is_owner_message,
+    is_owner_user,
     parse_ticket_number,
 )
 from keyboards import (
@@ -27,7 +27,7 @@ router = Router()
 
 @router.callback_query(F.data == "admin_delete")
 async def start_delete(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -42,7 +42,7 @@ async def start_delete(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(DeleteTicket.waiting_for_number, F.text)
 async def receive_delete_number(message: Message, state: FSMContext) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     ticket_number = parse_ticket_number(message.text)
@@ -72,7 +72,7 @@ async def invalid_delete_number(message: Message) -> None:
 
 @router.callback_query(DeleteTicket.waiting_for_confirmation, F.data.startswith("del_confirm_"))
 async def confirm_delete(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -85,19 +85,19 @@ async def confirm_delete(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     await callback.message.answer(
         f"✅ Билет {ticket_number} удалён.",
-        reply_markup=main_keyboard(is_admin=True),
+        reply_markup=main_keyboard(is_admin=True, is_owner=True),
     )
 
 
 @router.callback_query(DeleteTicket.waiting_for_confirmation, F.data == "del_cancel")
 async def cancel_delete(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
     await state.clear()
     await callback.answer()
-    await callback.message.answer("Удаление отменено.", reply_markup=main_keyboard(is_admin=True))
+    await callback.message.answer("Удаление отменено.", reply_markup=main_keyboard(is_admin=True, is_owner=True))
 
 
 # ── Batch delete (all tickets at once) ──────────────────────────────
@@ -105,7 +105,7 @@ async def cancel_delete(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "admin_delete_all")
 async def start_delete_all(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -120,7 +120,7 @@ async def start_delete_all(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "del_all_confirm")
 async def confirm_delete_all(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -131,13 +131,13 @@ async def confirm_delete_all(callback: CallbackQuery, state: FSMContext) -> None
     await callback.answer()
     await callback.message.answer(
         f"🧹 Удалено билетов: {deleted_count}. База данных очищена.",
-        reply_markup=main_keyboard(is_admin=True),
+        reply_markup=main_keyboard(is_admin=True, is_owner=True),
     )
 
 
 @router.callback_query(F.data == "del_all_cancel")
 async def cancel_delete_all(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 
@@ -145,6 +145,6 @@ async def cancel_delete_all(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     await callback.message.answer(
         "Удаление отменено.",
-        reply_markup=main_keyboard(is_admin=True),
+        reply_markup=main_keyboard(is_admin=True, is_owner=True),
     )
 

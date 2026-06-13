@@ -41,8 +41,19 @@ START_TEXT = """📚 Билеты к коллоквиуму №2
 • 5 12 28
 • 22"""
 
+STRANGER_TEXT = """🔒 Этот бот — приватный.
 
-def help_text(is_admin: bool) -> str:
+Заходит студент в бот за билетами... а бот ему:
+«Доступ запрещён.»
+
+— Но мне же экзамен сдавать!
+— А мне — сервер оплачивать. У нас у всех проблемы.
+
+Если тебе нужен доступ — попроси админа.
+Узнай свой ID: /myid"""
+
+
+def help_text(is_owner: bool) -> str:
     lines = [
         "Как пользоваться:",
         "",
@@ -58,14 +69,14 @@ def help_text(is_admin: bool) -> str:
         "Если к билету есть график — пришлю его отдельной картинкой.",
     ]
 
-    if is_admin:
+    if is_owner:
         lines.extend(
             [
                 "",
-                "Команды администратора:",
-                "/upload — загрузить или обновить билет",
-                "/status — посмотреть, сколько билетов загружено",
-                "/delete 22 — удалить билет по номеру",
+                "Команды владельца:",
+                "/addadmin <id> — назначить админа",
+                "/removeadmin <id> — снять админа",
+                "/admins — список админов",
                 "/cancel — отменить текущее действие",
             ]
         )
@@ -92,6 +103,17 @@ def is_admin_user(user: User | None) -> bool:
 
 def is_admin_message(message: Message) -> bool:
     return is_admin_user(message.from_user)
+
+
+def is_owner_message(message: Message) -> bool:
+    return is_owner_user(message.from_user)
+
+
+def _reply_keyboard(message: Message) -> "ReplyKeyboardMarkup":
+    return main_keyboard(
+        is_admin=is_admin_message(message),
+        is_owner=is_owner_message(message),
+    )
 
 
 def parse_ticket_number(text: str | None) -> int | None:
@@ -284,7 +306,7 @@ async def collect_text_or_document(
 
 
 async def finish_fsm(message: Message, text: str) -> None:
-    await message.answer(text, reply_markup=main_keyboard(is_admin_message(message)))
+    await message.answer(text, reply_markup=_reply_keyboard(message))
 
 
 async def send_long_message(message: Message, text: str) -> None:
@@ -371,23 +393,28 @@ async def build_tickets_list_text(admin_status: bool = False) -> str:
 
 @router.message(Command("start"))
 async def start(message: Message) -> None:
-    await message.answer(
-        START_TEXT,
-        reply_markup=main_keyboard(is_admin_message(message)),
-    )
+    if not is_admin_message(message):
+        await message.answer(STRANGER_TEXT)
+        return
+    await message.answer(START_TEXT, reply_markup=_reply_keyboard(message))
 
 
 @router.message(Command("help"))
 @router.message(F.text == HELP_BUTTON)
 async def help_message(message: Message) -> None:
+    if not is_admin_message(message):
+        await message.answer(STRANGER_TEXT)
+        return
     await message.answer(
-        help_text(is_admin_message(message)),
-        reply_markup=main_keyboard(is_admin_message(message)),
+        help_text(is_owner_message(message)),
+        reply_markup=_reply_keyboard(message),
     )
 
 
 @router.message(F.text == ALL_TICKETS_BUTTON)
 async def all_tickets(message: Message) -> None:
+    if not is_admin_message(message):
+        return
     await send_long_message(message, await build_tickets_list_text(admin_status=False))
 
 
@@ -395,17 +422,11 @@ async def all_tickets(message: Message) -> None:
 @router.message(F.text == CANCEL_BUTTON)
 async def cancel(message: Message, state: FSMContext) -> None:
     if await state.get_state() is None:
-        await message.answer(
-            "Нет активного действия.",
-            reply_markup=main_keyboard(is_admin_message(message)),
-        )
+        await message.answer("Нет активного действия.", reply_markup=_reply_keyboard(message))
         return
 
     await state.clear()
-    await message.answer(
-        "Действие отменено.",
-        reply_markup=main_keyboard(is_admin_message(message)),
-    )
+    await message.answer("Действие отменено.", reply_markup=_reply_keyboard(message))
 
 
 @router.message(Command("myid"))

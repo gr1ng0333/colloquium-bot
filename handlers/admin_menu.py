@@ -6,8 +6,8 @@ from aiogram.types import CallbackQuery, Message
 
 from handlers.common import (
     build_tickets_list_text,
-    is_admin_message,
-    is_admin_user,
+    is_owner_message,
+    is_owner_user,
     send_long_message,
 )
 from keyboards import ADMIN_BUTTON, admin_menu_inline
@@ -18,7 +18,7 @@ router = Router()
 
 @router.message(F.text == ADMIN_BUTTON)
 async def show_admin_menu(message: Message, state: FSMContext) -> None:
-    if not is_admin_message(message):
+    if not is_owner_message(message):
         return
 
     await state.clear()
@@ -27,7 +27,7 @@ async def show_admin_menu(message: Message, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "admin_status")
 async def admin_status(callback: CallbackQuery, state: FSMContext) -> None:
-    if not is_admin_user(callback.from_user):
+    if not is_owner_user(callback.from_user):
         await callback.answer("Нет доступа", show_alert=True)
         return
 

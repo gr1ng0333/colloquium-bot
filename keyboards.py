@@ -13,12 +13,18 @@ UPLOAD_BUTTON = "➕ Добавить билет"
 CANCEL_BUTTON = "❌ Отмена"
 
 
-def main_keyboard(is_admin: bool) -> ReplyKeyboardMarkup:
+def main_keyboard(is_admin: bool = False, is_owner: bool = False) -> ReplyKeyboardMarkup:
+    if not is_admin and not is_owner:
+        return ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=HELP_BUTTON)]],
+            resize_keyboard=True,
+        )
+
     keyboard = [[
         KeyboardButton(text=ALL_TICKETS_BUTTON),
         KeyboardButton(text=HELP_BUTTON),
     ]]
-    if is_admin:
+    if is_owner:
         keyboard.append([
             KeyboardButton(text=ADMIN_BUTTON),
             KeyboardButton(text=UPLOAD_BUTTON),
