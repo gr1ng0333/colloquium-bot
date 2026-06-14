@@ -67,12 +67,11 @@ _DESCR_RE = re.compile(r"Что изображено:\s*(.+)")
 
 
 def _parse_graphs(text: str) -> tuple[str, list[GraphPlaceholder]]:
-    """Extract all [ГРАФИК] blocks and return cleaned text + graph list."""
+    """Extract all [ГРАФИК] blocks and return original text + graph list."""
     graphs: list[GraphPlaceholder] = []
     idx = 0
 
-    def _replace(match: re.Match) -> str:
-        nonlocal idx
+    for match in _GRAPH_BLOCK_RE.finditer(text):
         idx += 1
         body = match.group(1)
         source_m = _SOURCE_RE.search(body)
@@ -84,12 +83,8 @@ def _parse_graphs(text: str) -> tuple[str, list[GraphPlaceholder]]:
                 image_index=idx,
             )
         )
-        return ""
 
-    cleaned = _GRAPH_BLOCK_RE.sub(_replace, text)
-    # collapse runs of 3+ blank lines to 2
-    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
-    return cleaned.strip(), graphs
+    return text, graphs
 
 
 def parse_cluster(text: str) -> list[ClusterTicket]:
