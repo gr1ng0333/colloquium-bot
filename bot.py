@@ -12,6 +12,7 @@ from handlers import (
     edit_ticket,
     get_tickets,
     manage_image,
+    upload_cluster,
     upload_ticket,
 )
 
@@ -31,6 +32,7 @@ async def main() -> None:
     dp.include_router(common.router)
     dp.include_router(admin_menu.router)
     dp.include_router(upload_ticket.router)
+    dp.include_router(upload_cluster.router)
     dp.include_router(edit_ticket.router)
     dp.include_router(manage_image.router)
     dp.include_router(delete_ticket.router)

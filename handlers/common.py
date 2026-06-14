@@ -186,7 +186,10 @@ async def read_text_from_message(message: Message) -> str | None:
     document = message.document
     if document:
         is_plain_text = document.mime_type == "text/plain"
-        is_txt_file = bool(document.file_name and document.file_name.lower().endswith(".txt"))
+        is_txt_file = bool(
+            document.file_name
+            and document.file_name.lower().endswith((".txt", ".md"))
+        )
         if is_plain_text or is_txt_file:
             buffer = BytesIO()
             await message.bot.download(document.file_id, destination=buffer)

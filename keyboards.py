@@ -48,6 +48,7 @@ def admin_menu_inline() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="➕ Загрузить билет", callback_data="admin_upload")],
+            [InlineKeyboardButton(text="📦 Загрузить кластер", callback_data="admin_cluster")],
             [InlineKeyboardButton(text="✏️ Редактировать билет", callback_data="admin_edit")],
             [InlineKeyboardButton(text="📊 Добавить/заменить график", callback_data="admin_image")],
             [InlineKeyboardButton(text="🗑 Удалить билет", callback_data="admin_delete")],
@@ -160,5 +161,13 @@ def edit_add_more_images_inline() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="➕ Добавить ещё график", callback_data="edit_img_more"),
                 InlineKeyboardButton(text="✅ Готово", callback_data="edit_img_done"),
             ]
+        ]
+    )
+
+
+def cluster_skip_image_inline() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⏭ Пропустить график", callback_data="cluster_skip_img")],
         ]
     )

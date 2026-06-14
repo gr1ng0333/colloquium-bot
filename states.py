@@ -26,3 +26,8 @@ class ManageImage(StatesGroup):
 class DeleteTicket(StatesGroup):
     waiting_for_number = State()
     waiting_for_confirmation = State()
+
+
+class UploadCluster(StatesGroup):
+    waiting_for_text = State()
+    waiting_for_image = State()
