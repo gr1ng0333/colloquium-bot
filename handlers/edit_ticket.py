@@ -78,7 +78,7 @@ async def start_edit(callback: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(EditTicket.waiting_for_number)
     await callback.answer()
     await callback.message.answer(
-        "Какой билет редактировать? (1–43):",
+        "Какой билет редактировать? (1–40):",
         reply_markup=cancel_keyboard(),
     )
 
@@ -90,7 +90,7 @@ async def receive_edit_number(message: Message, state: FSMContext) -> None:
 
     ticket_number = parse_ticket_number(message.text)
     if ticket_number is None:
-        await message.answer("Нужно число от 1 до 43.")
+        await message.answer("Нужно число от 1 до 40.")
         return
 
     await _show_edit_menu(message, state, ticket_number)
@@ -99,7 +99,7 @@ async def receive_edit_number(message: Message, state: FSMContext) -> None:
 @router.message(EditTicket.waiting_for_number)
 async def invalid_edit_number(message: Message) -> None:
     if is_admin_message(message):
-        await message.answer("Нужно число от 1 до 43.")
+        await message.answer("Нужно число от 1 до 40.")
 
 
 # ── Export raw text ──────────────────────────────────────────────────

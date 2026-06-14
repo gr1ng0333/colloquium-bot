@@ -14,4 +14,4 @@ OWNER_ID = 7891813284
 DB_PATH = str(BASE_DIR / "colloquium.db")
 IMAGES_DIR = str(BASE_DIR / "images")
 TMP_DIR = str(BASE_DIR / "tmp")
-TOTAL_TICKETS = 43
+TOTAL_TICKETS = 40

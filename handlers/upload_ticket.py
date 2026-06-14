@@ -36,7 +36,7 @@ async def _start_upload_flow(message: Message, state: FSMContext) -> None:
     await state.clear()
     await state.set_state(UploadTicket.waiting_for_number)
     await message.answer(
-        "Отправь номер билета (1–43):",
+        "Отправь номер билета (1–40):",
         reply_markup=cancel_keyboard(),
     )
 
@@ -91,7 +91,7 @@ async def receive_ticket_number(message: Message, state: FSMContext) -> None:
 
     ticket_number = parse_ticket_number(message.text)
     if ticket_number is None:
-        await message.answer("Нужно число от 1 до 43.")
+        await message.answer("Нужно число от 1 до 40.")
         return
 
     await state.update_data(ticket_number=ticket_number)
@@ -109,7 +109,7 @@ async def receive_ticket_number(message: Message, state: FSMContext) -> None:
 @router.message(UploadTicket.waiting_for_number)
 async def invalid_ticket_number(message: Message) -> None:
     if is_admin_message(message):
-        await message.answer("Нужно число от 1 до 43.")
+        await message.answer("Нужно число от 1 до 40.")
 
 
 @router.callback_query(UploadTicket.waiting_for_number, F.data == "overwrite_yes")
